@@ -28,8 +28,13 @@ namespace DriftClock
         private readonly TextBox _ical = new TextBox();
         private readonly TrackBar _night = new TrackBar();
         private readonly Label _nightValue = new Label();
+        private readonly ComboBox _burnIn = new ComboBox();
+        private readonly Label _burnInHint = new Label();
+        private readonly TrackBar _maxBright = new TrackBar();
+        private readonly Label _maxBrightValue = new Label();
         private readonly DateTimePicker _nightFrom = new DateTimePicker(), _nightTo = new DateTimePicker();
         private readonly Button _ok = new Button(), _cancel = new Button();
+        private readonly float _scale;
 
         public SettingsForm(Settings settings)
         {
@@ -40,13 +45,17 @@ namespace DriftClock
 
             Text = "DriftClock settings";
             Font = new Font("Segoe UI", 9f);
-            AutoScaleDimensions = new SizeF(96f, 96f);
-            AutoScaleMode = AutoScaleMode.Dpi;
+            // Fonts are rendered at the real monitor DPI, but this fixed pixel layout is not scaled by
+            // WinForms (the per-monitor manifest means AutoScaleMode.Dpi never sees a DPI change), so the
+            // dialog came out cramped: text was clipped and the track bar grew over the label below it.
+            // Scale the layout from the font metrics instead: Segoe UI 9pt is 16px high at 96 DPI.
+            _scale = Math.Max(1f, Font.Height / 16f);
+            AutoScaleMode = AutoScaleMode.None;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(424, 468);
+            ClientSize = new Size(S(424), S(602));
 
             Add(Lbl("Location (for weather and sunset/sunrise)", 12, 10, 398));
             Place(_search, 12, 32, 290, 24);
@@ -73,29 +82,49 @@ namespace DriftClock
             Add(Lbl("Calendar link (private iCal / webcal address)", 12, 252, 398));
             Place(_ical, 12, 272, 398, 24);
 
-            Add(Lbl("Brightness at night", 12, 306, 200));
+            Add(Lbl("Anti burn-in protection (OLED)", 12, 306, 300));
+            _burnIn.DropDownStyle = ComboBoxStyle.DropDownList;
+            foreach (string name in BurnIn.LevelNames) _burnIn.Items.Add(name);
+            Place(_burnIn, 12, 328, 160, 24);
+            _burnInHint.Left = S(180);
+            _burnInHint.Top = S(332);
+            _burnInHint.Width = S(230);
+            _burnInHint.Height = S(20);
+            _burnInHint.AutoSize = false;
+            Controls.Add(_burnInHint);
+            _burnIn.SelectedIndexChanged += (s, e) => UpdateBurnInHint();
+
+            Add(Lbl("Maximum clock brightness", 12, 364, 200));
+            _maxBright.Minimum = 20;
+            _maxBright.Maximum = 100;
+            _maxBright.TickFrequency = 10;
+            Place(_maxBright, 12, 386, 340, 40);
+            Place(_maxBrightValue, 360, 392, 50, 20);
+            _maxBright.Scroll += (s, e) => _maxBrightValue.Text = _maxBright.Value + "%";
+
+            Add(Lbl("Brightness at night", 12, 438, 200));
             _night.Minimum = 10;
             _night.Maximum = 100;
             _night.TickFrequency = 10;
-            Place(_night, 12, 326, 340, 40);
-            Place(_nightValue, 360, 332, 50, 20);
+            Place(_night, 12, 460, 340, 40);
+            Place(_nightValue, 360, 466, 50, 20);
             _night.Scroll += (s, e) => _nightValue.Text = _night.Value + "%";
 
-            Add(Lbl("Night hours when sunrise/sunset isn't available:", 12, 376, 398));
+            Add(Lbl("Night hours when sunrise/sunset isn't available:", 12, 510, 398));
             foreach (var p in new[] { _nightFrom, _nightTo })
             {
                 p.Format = DateTimePickerFormat.Custom;
                 p.CustomFormat = "HH:mm";
                 p.ShowUpDown = true;
             }
-            Place(_nightFrom, 12, 398, 70, 24);
-            Add(Lbl("to", 92, 402, 28));
-            Place(_nightTo, 124, 398, 70, 24);
+            Place(_nightFrom, 12, 532, 70, 24);
+            Add(Lbl("to", 92, 536, 28));
+            Place(_nightTo, 124, 532, 70, 24);
 
-            Place(_ok, 254, 430, 75, 28);
+            Place(_ok, 254, 564, 75, 28);
             _ok.Text = "OK";
             _ok.Click += (s, e) => Save();
-            Place(_cancel, 335, 430, 75, 28);
+            Place(_cancel, 335, 564, 75, 28);
             _cancel.Text = "Cancel";
             _cancel.DialogResult = DialogResult.Cancel;
             AcceptButton = _ok;
@@ -114,11 +143,35 @@ namespace DriftClock
             _fahrenheit.Checked = _settings.UseFahrenheit;
             _ical.Text = _settings.ICalUrl ?? "";
             _ical.Enabled = _events.Checked;
+            _burnIn.SelectedIndex = Math.Max(BurnIn.Off, Math.Min(BurnIn.High, _settings.BurnInLevel));
+            UpdateBurnInHint();
+            _maxBright.Value = Math.Max(20, Math.Min(100, _settings.MaxBrightnessPercent));
+            _maxBrightValue.Text = _maxBright.Value + "%";
             _night.Value = Math.Max(10, Math.Min(100, _settings.NightBrightnessPercent));
             _nightValue.Text = _night.Value + "%";
             _nightFrom.Value = DateTime.Today + _settings.ManualNightStart;
             _nightTo.Value = DateTime.Today + _settings.ManualNightEnd;
             ShowChosen();
+        }
+
+        /// <summary>Explains what the selected burn-in level actually does to the drift.</summary>
+        private void UpdateBurnInHint()
+        {
+            switch (_burnIn.SelectedIndex)
+            {
+                case BurnIn.Off:
+                    _burnInHint.Text = "clock stays still";
+                    break;
+                case BurnIn.Low:
+                    _burnInHint.Text = "small, slow movement";
+                    break;
+                case BurnIn.High:
+                    _burnInHint.Text = "faster movement";
+                    break;
+                default:
+                    _burnInHint.Text = "moves over the whole screen";
+                    break;
+            }
         }
 
         private void ShowChosen()
@@ -187,6 +240,8 @@ namespace DriftClock
             _settings.UseFahrenheit = _fahrenheit.Checked;
             _settings.ICalUrl = url.Length == 0 ? null : url;
             _settings.NightBrightnessPercent = _night.Value;
+            _settings.MaxBrightnessPercent = _maxBright.Value;
+            _settings.BurnInLevel = Math.Max(BurnIn.Off, Math.Min(BurnIn.High, _burnIn.SelectedIndex));
             _settings.ManualNightStart = _nightFrom.Value.TimeOfDay;
             _settings.ManualNightEnd = _nightTo.Value.TimeOfDay;
 
@@ -208,13 +263,18 @@ namespace DriftClock
 
         private void Place(Control c, int x, int y, int w, int h)
         {
-            c.SetBounds(x, y, w, h);
+            c.SetBounds(S(x), S(y), S(w), S(h));
             Controls.Add(c);
         }
 
-        private static Label Lbl(string text, int x, int y, int w)
+        private int S(int value)
         {
-            return new Label { Text = text, Left = x, Top = y, Width = w, Height = 20, AutoSize = false };
+            return (int)Math.Round(value * _scale);
+        }
+
+        private Label Lbl(string text, int x, int y, int w)
+        {
+            return new Label { Text = text, Left = S(x), Top = S(y), Width = S(w), Height = S(20), AutoSize = false };
         }
 
         private void Check(CheckBox c, string text, int x, int y)

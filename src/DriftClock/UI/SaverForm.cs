@@ -16,11 +16,12 @@ namespace DriftClock
         private readonly bool _primary;
         private readonly DataService _data;
         private readonly Settings _settings;
+        private readonly float _driftSpeed;
         private ClockRenderer _renderer;
         private Timer _timer;
         private DateTime _now;
         private ScreenState _state;
-        private Point _offset;
+        private DriftSample _drift;
         private string _key;
 
         public SaverForm(Screen screen, bool primary, DataService data, Settings settings)
@@ -29,6 +30,9 @@ namespace DriftClock
             _primary = primary;
             _data = data;
             _settings = settings;
+            // How fast the picture walks along its path. The travel distance itself is decided by the renderer,
+            // which knows how much free space the clock leaves on the screen; "Off" keeps everything completely still.
+            _driftSpeed = BurnIn.SpeedFactor(settings.BurnInLevel);
 
             AutoScaleMode = AutoScaleMode.None;
             FormBorderStyle = FormBorderStyle.None;
@@ -46,9 +50,11 @@ namespace DriftClock
             Bounds = _screen.Bounds;
             if (!_primary) return;
 
-            _renderer = new ClockRenderer(DeviceDpi / 96f);
+            _renderer = new ClockRenderer();
             Tick();
-            _timer = new Timer { Interval = 1000 };
+            // The clock drifts several pixels per second, so it has to be repainted a few times per second;
+            // a one-second tick would make the motion look like a series of jumps.
+            _timer = new Timer { Interval = 250 };
             _timer.Tick += (s, a) => Tick();
             _timer.Start();
         }
@@ -63,14 +69,15 @@ namespace DriftClock
         private void Tick()
         {
             DateTime now = DateTime.Now;
-            long minutes = (long)Math.Floor((now.ToUniversalTime() - Epoch).TotalMinutes);
-            Point offset = DriftPath.OffsetFor(minutes, (int)Math.Round(16 * DeviceDpi / 96f));
+            // Quantised to the repaint interval so the picture moves in small steps instead of teleporting.
+            double minutes = Math.Floor((now.ToUniversalTime() - Epoch).TotalMilliseconds / 250.0) * 250.0 / 60000.0;
+            DriftSample drift = DriftPath.Sample(minutes, _driftSpeed);
             ScreenState state = _data.Current;
 
-            string key = _renderer.RenderKey(now, state, offset);
+            string key = _renderer.RenderKey(now, state, drift);
             _now = now;
             _state = state;
-            _offset = offset;
+            _drift = drift;
             if (key == _key) return;
             _key = key;
             Invalidate();
@@ -80,7 +87,7 @@ namespace DriftClock
         {
             e.Graphics.Clear(Color.Black);
             if (_renderer != null)
-                _renderer.Draw(e.Graphics, ClientRectangle, _now, _state, _settings, _offset);
+                _renderer.Draw(e.Graphics, ClientRectangle, _now, _state, _settings, _drift);
         }
 
         protected override void OnPaintBackground(PaintEventArgs e)

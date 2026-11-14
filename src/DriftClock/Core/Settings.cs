@@ -14,14 +14,27 @@ namespace DriftClock
         public double? Longitude { get; set; }
         public bool Use12Hour { get; set; }
         public bool UseFahrenheit { get; set; }
-        public bool ShowWeather { get; set; } = true;
-        public bool ShowBattery { get; set; } = true;
+        public bool ShowWeather { get; set; }
+        public bool ShowBattery { get; set; }
         public bool ShowMonthGrid { get; set; }
         public bool ShowEvents { get; set; }
         public string ICalUrl { get; set; }
-        public int NightBrightnessPercent { get; set; } = 35;
-        public TimeSpan ManualNightStart { get; set; } = TimeSpan.FromHours(23);
-        public TimeSpan ManualNightEnd { get; set; } = TimeSpan.FromHours(7);
+        public int NightBrightnessPercent { get; set; }
+        public int MaxBrightnessPercent { get; set; }
+        public int BurnInLevel { get; set; }
+        public TimeSpan ManualNightStart { get; set; }
+        public TimeSpan ManualNightEnd { get; set; }
+
+        public Settings()
+        {
+            ShowWeather = true;
+            ShowBattery = true;
+            NightBrightnessPercent = 35;
+            MaxBrightnessPercent = 100;
+            BurnInLevel = BurnIn.Normal;
+            ManualNightStart = TimeSpan.FromHours(23);
+            ManualNightEnd = TimeSpan.FromHours(7);
+        }
 
         public static string DefaultPath
         {
@@ -54,6 +67,10 @@ namespace DriftClock
             int n;
             if (kv.TryGetValue("NightBrightnessPercent", out v) && int.TryParse(v, NumberStyles.Integer, Inv, out n))
                 s.NightBrightnessPercent = Math.Max(10, Math.Min(100, n));
+            if (kv.TryGetValue("MaxBrightnessPercent", out v) && int.TryParse(v, NumberStyles.Integer, Inv, out n))
+                s.MaxBrightnessPercent = Math.Max(20, Math.Min(100, n));
+            if (kv.TryGetValue("BurnInLevel", out v) && int.TryParse(v, NumberStyles.Integer, Inv, out n))
+                s.BurnInLevel = Math.Max(BurnIn.Off, Math.Min(BurnIn.High, n));
             s.ManualNightStart = Time(kv, "ManualNightStart", s.ManualNightStart);
             s.ManualNightEnd = Time(kv, "ManualNightEnd", s.ManualNightEnd);
             if (kv.TryGetValue("ICalUrlProtected", out v) && !string.IsNullOrEmpty(v))
@@ -82,6 +99,8 @@ namespace DriftClock
             sb.AppendLine("ShowMonthGrid=" + ShowMonthGrid);
             sb.AppendLine("ShowEvents=" + ShowEvents);
             sb.AppendLine("NightBrightnessPercent=" + Math.Max(10, Math.Min(100, NightBrightnessPercent)).ToString(Inv));
+            sb.AppendLine("MaxBrightnessPercent=" + Math.Max(20, Math.Min(100, MaxBrightnessPercent)).ToString(Inv));
+            sb.AppendLine("BurnInLevel=" + Math.Max(BurnIn.Off, Math.Min(BurnIn.High, BurnInLevel)).ToString(Inv));
             sb.AppendLine("ManualNightStart=" + ManualNightStart.ToString(@"hh\:mm", Inv));
             sb.AppendLine("ManualNightEnd=" + ManualNightEnd.ToString(@"hh\:mm", Inv));
             if (!string.IsNullOrWhiteSpace(ICalUrl))

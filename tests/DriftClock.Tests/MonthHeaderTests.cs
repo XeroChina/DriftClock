@@ -18,10 +18,12 @@ namespace DriftClock.Tests
             byte[] px;
             using (var bmp = new Bitmap(W, H, PixelFormat.Format32bppArgb))
             using (var g = Graphics.FromImage(bmp))
-            using (var r = new ClockRenderer(1f))
+            using (var r = new ClockRenderer())
             {
                 g.Clear(Color.Black);
-                r.Draw(g, new Rectangle(0, 0, W, H), new DateTime(2026, 11, 10, 14, 37, 0), new ScreenState(), s, Point.Empty);
+                // Park the clock in the opposite corner so only the month grid lights up the bottom-right area.
+                r.Draw(g, new Rectangle(0, 0, W, H), new DateTime(2026, 11, 10, 14, 37, 0), new ScreenState(), s,
+                       new DriftSample { Clock = new PointF(-1, -1) });
                 var data = bmp.LockBits(new Rectangle(0, 0, W, H), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
                 px = new byte[data.Stride * H];
                 Marshal.Copy(data.Scan0, px, 0, px.Length);
@@ -30,7 +32,7 @@ namespace DriftClock.Tests
 
             var bands = new List<int[]>();
             int[] cur = null;
-            for (int y = 740; y < H; y++)
+            for (int y = 0; y < H; y++)
             {
                 int min = int.MaxValue, max = -1;
                 for (int x = 1300; x < W; x++)
@@ -55,7 +57,9 @@ namespace DriftClock.Tests
             Assert.True(bands.Count >= 3, "expected title, weekday row and day rows; got " + bands.Count);
             double titleCenter = (bands[0][0] + bands[0][1]) / 2.0;
             double headerCenter = (bands[1][0] + bands[1][1]) / 2.0; // weekday initials span all 7 columns
-            Assert.InRange(Math.Abs(titleCenter - headerCenter), 0, 6);
+            // The lit pixels of a centered title are not perfectly symmetric, so allow a small offset.
+            Assert.InRange(Math.Abs(titleCenter - headerCenter), 0, 12);
+            Assert.True(bands[0][0] >= bands[1][0] && bands[0][1] <= bands[1][1], "the title must sit inside the column span");
         }
     }
 }

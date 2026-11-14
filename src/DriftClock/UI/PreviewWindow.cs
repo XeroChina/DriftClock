@@ -24,7 +24,7 @@ namespace DriftClock
         private readonly IntPtr _parent;
         private readonly DataService _data;
         private readonly Settings _settings;
-        private readonly ClockRenderer _renderer = new ClockRenderer(0.15f);
+        private readonly ClockRenderer _renderer = new ClockRenderer();
         private readonly Timer _timer = new Timer { Interval = 1000 };
 
         public PreviewWindow(IntPtr parent, DataService data, Settings settings)
@@ -82,7 +82,7 @@ namespace DriftClock
         protected override void OnPaint(PaintEventArgs e)
         {
             e.Graphics.Clear(Color.Black);
-            _renderer.Draw(e.Graphics, ClientRectangle, DateTime.Now, _data.Current, _settings, Point.Empty);
+            _renderer.Draw(e.Graphics, ClientRectangle, DateTime.Now, _data.Current, _settings, new DriftSample());
         }
 
         protected override void Dispose(bool disposing)
