@@ -6,11 +6,11 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Giovix92/DriftClock?style=for-the-badge&color=7aa2ff"></a>
-  <a href="../../releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/Giovix92/DriftClock/total?style=for-the-badge&color=57c7a5"></a>
+  <a href="../../releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/XeroChina/DriftClock?style=for-the-badge&color=7aa2ff"></a>
+  <a href="../../releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/XeroChina/DriftClock/total?style=for-the-badge&color=57c7a5"></a>
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4?style=for-the-badge&logo=windows11&logoColor=white">
   <img alt=".NET Framework 4.8" src="https://img.shields.io/badge/.NET%20Framework-4.8-512BD4?style=for-the-badge&logo=dotnet&logoColor=white">
-  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/Giovix92/DriftClock?style=for-the-badge&color=f5a97f"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/XeroChina/DriftClock?style=for-the-badge&color=f5a97f"></a>
 </p>
 
 ---
@@ -34,6 +34,8 @@ Black screen, big thin digits, a date, and a few small dim extras tucked in the 
 | 📅 **Calendar** | Optional month grid, plus upcoming events from a private iCal URL (Google or Outlook), recurrences and time zones included. |
 | 🌗 **Night dimming** | Dims from sunset to sunrise at your location, with manual hours as a fallback. |
 | 🖥️ **Multi-monitor** | Content on the primary display, every other screen stays pure black. |
+| 🛡️ **Anti burn-in levels** | Four levels: still, small and slow, whole-screen roaming, or faster roaming. |
+| 🔆 **Brightness cap** | A separate ceiling for the big digits, independent of the night dimming. |
 
 ## 🪶 Light by design
 
@@ -57,6 +59,8 @@ dotnet build src/DriftClock -c Release
 ```
 
 The result is `src/DriftClock/bin/Release/net48/DriftClock.scr`.
+
+No .NET SDK? `tools/build-scr.ps1` compiles the same binary with the .NET Framework compiler that ships with Windows, straight into `dist/DriftClock.scr`.
 
 ## 📄 License
 
